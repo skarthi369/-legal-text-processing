@@ -48,19 +48,53 @@ class WebLegalTextProcessor:
         return extracted_info
     
     def classify_text(self, text):
-        # Simplified classification based on keywords
+        # Enhanced classification with weighted keywords
         text_lower = text.lower()
-        scores = {
-            'EPF': sum(1 for word in ['provident', 'fund', 'employee', 'contribution', 'epf'] if word in text_lower),
-            'Companies': sum(1 for word in ['company', 'corporation', 'limited', 'memorandum', 'directors'] if word in text_lower),
-            'TDS': sum(1 for word in ['tax', 'deducted', 'source', 'tds', 'income'] if word in text_lower),
-            'Contract': sum(1 for word in ['agreement', 'contract', 'parties', 'terms', 'breach'] if word in text_lower),
-            'Regulation': sum(1 for word in ['regulation', 'rule', 'compliance', 'authority'] if word in text_lower)
+        text_words = set(text_lower.split())
+        
+        # Define keywords with weights
+        keyword_weights = {
+            'EPF': {
+                'provident': 2.0, 'fund': 1.5, 'employee': 1.0, 'contribution': 1.5, 'epf': 2.0,
+                'pension': 1.5, 'employer': 1.0, 'establishment': 1.0, 'scheme': 1.0,
+                'withdrawal': 1.0, 'universal': 1.0, 'account': 1.0
+            },
+            'Companies': {
+                'company': 2.0, 'corporation': 1.5, 'limited': 1.5, 'memorandum': 1.5, 'directors': 1.5,
+                'board': 1.0, 'shareholder': 1.5, 'articles': 1.0, 'incorporation': 1.5,
+                'register': 1.0, 'resolution': 1.0, 'secretary': 1.0
+            },
+            'TDS': {
+                'tax': 2.0, 'deducted': 2.0, 'source': 1.5, 'tds': 2.0, 'income': 1.5,
+                'deduction': 1.5, 'withholding': 1.5, 'assessment': 1.0, 'return': 1.0,
+                'payment': 1.0, 'certificate': 1.0, 'challan': 1.0
+            },
+            'Contract': {
+                'agreement': 2.0, 'contract': 2.0, 'parties': 1.5, 'terms': 1.5, 'breach': 1.5,
+                'clause': 1.0, 'covenant': 1.5, 'obligation': 1.5, 'execution': 1.0,
+                'consideration': 1.5, 'termination': 1.5, 'liability': 1.0
+            },
+            'Regulation': {
+                'regulation': 2.0, 'rule': 1.5, 'compliance': 1.5, 'authority': 1.5, 'statutory': 1.5,
+                'notification': 1.0, 'provision': 1.0, 'gazette': 1.0, 'enforcement': 1.0,
+                'guidelines': 1.0, 'directive': 1.0, 'amendment': 1.0
+            }
         }
+        
+        # Calculate weighted scores
+        scores = {}
+        for category, keywords in keyword_weights.items():
+            category_score = sum(weight for word, weight in keywords.items() if word in text_lower)
+            # Normalize by maximum possible score for the category
+            max_possible = sum(keywords.values())
+            scores[category] = category_score / max_possible if max_possible > 0 else 0
         
         predicted_category = max(scores.keys(), key=lambda k: scores[k])
         max_score = max(scores.values())
-        confidence = max_score / (sum(scores.values()) + 1)  # Normalize
+        
+        # Enhanced confidence calculation
+        confidence = max_score * (1 + np.log1p(len(text_words)) / 100)  # Scale with text length
+        confidence = min(max(confidence, 0.1), 0.99)  # Bound between 0.1 and 0.99
         
         return {
             'predicted_category': predicted_category,
