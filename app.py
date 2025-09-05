@@ -9,7 +9,8 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 import numpy as np
 
-app = Flask(__name__)
+app = Flask(__name__, 
+    template_folder=os.path.abspath(os.path.join(os.path.dirname(__file__), 'templates')))
 
 # Legal Text Processor (simplified version for web deployment)
 class WebLegalTextProcessor:
