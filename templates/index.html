@@ -3,275 +3,408 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Legal Text Processing System</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <title>Legal AI Assistant - Gemini RAG</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        body { background-color: #f8f9fa; }
-        .hero-section { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 60px 0; }
-        .feature-card { transition: transform 0.3s; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .feature-card:hover { transform: translateY(-5px); }
-        .result-section { background: white; border-radius: 10px; padding: 20px; margin: 10px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .confidence-bar { height: 20px; background-color: #e9ecef; border-radius: 10px; overflow: hidden; }
-        .confidence-fill { height: 100%; background: linear-gradient(90deg, #28a745, #ffc107, #dc3545); transition: width 0.5s ease; }
-        .entity-tag { background: #e3f2fd; color: #1976d2; padding: 4px 8px; border-radius: 15px; margin: 2px; display: inline-block; }
-        .loading { display: none; }
-        .footer { background-color: #343a40; color: white; padding: 40px 0; margin-top: 60px; }
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Inter', system-ui, sans-serif;
+        }
+
+        .chat-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+            height: 600px;
+            display: flex;
+            flex-direction: column;
+            max-width: 1000px;
+            margin: 2rem auto;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #1e40af, #3b82f6);
+            color: white;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 1rem;
+            overflow-y: auto;
+            background: #f8fafc;
+        }
+
+        .message {
+            margin-bottom: 1rem;
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message.assistant {
+            justify-content: flex-start;
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+
+        .user .message-avatar {
+            background: #1e40af;
+            color: white;
+        }
+
+        .assistant .message-avatar {
+            background: #059669;
+            color: white;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 1rem;
+            border-radius: 18px;
+        }
+
+        .user .message-content {
+            background: #1e40af;
+            color: white;
+        }
+
+        .assistant .message-content {
+            background: white;
+            color: #1f2937;
+            border: 1px solid #e5e7eb;
+        }
+
+        .chat-input-area {
+            padding: 1.5rem;
+            background: white;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 0.75rem;
+            align-items: flex-end;
+        }
+
+        .message-input {
+            flex: 1;
+            border: 2px solid #e5e7eb;
+            border-radius: 25px;
+            padding: 0.75rem 1rem;
+            resize: none;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+
+        .message-input:focus {
+            outline: none;
+            border-color: #1e40af;
+            box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1);
+        }
+
+        .send-button {
+            background: #1e40af;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .send-button:hover:not(:disabled) {
+            background: #1e3a8a;
+            transform: scale(1.05);
+        }
+
+        .send-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .typing-indicator {
+            display: none;
+        }
+
+        .welcome-message {
+            text-align: center;
+            padding: 2rem;
+            color: #64748b;
+        }
+
+        .quick-question-btn {
+            background: rgba(30, 64, 175, 0.1);
+            color: #1e40af;
+            border: 1px solid rgba(30, 64, 175, 0.2);
+            border-radius: 20px;
+            padding: 0.5rem 1rem;
+            margin: 0.25rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-block;
+            font-size: 0.875rem;
+        }
+
+        .quick-question-btn:hover {
+            background: #1e40af;
+            color: white;
+        }
+
+        .sources-section {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e5e7eb;
+            font-size: 0.875rem;
+        }
+
+        .source-item {
+            background: #f1f5f9;
+            border-radius: 8px;
+            padding: 0.5rem;
+            margin: 0.25rem 0;
+        }
     </style>
 </head>
 <body>
-    <!-- Hero Section -->
-    <div class="hero-section text-center">
-        <div class="container">
-            <h1 class="display-4 mb-4"><i class="fas fa-scale-justice"></i> Legal Text Processing System</h1>
-            <p class="lead mb-4">Advanced NLP system for legal document classification and information extraction</p>
-            <p class="mb-0">Built with Machine Learning • Trained on Indian Legal Documents • Real-time Analysis</p>
-        </div>
-    </div>
+    <div class="container-fluid">
+        <!-- Chat Interface -->
+        <div class="chat-container">
+            <!-- Chat Header -->
+            <div class="chat-header">
+                <h2><i class="fas fa-balance-scale"></i> Legal AI Assistant</h2>
+                <p class="mb-0">Powered by Google Gemini & RAG Technology</p>
+            </div>
 
-    <!-- Main Content -->
-    <div class="container mt-5">
-        <!-- Features Section -->
-        <div class="row mb-5">
-            <div class="col-md-4">
-                <div class="card feature-card h-100">
-                    <div class="card-body text-center">
-                        <i class="fas fa-sitemap fa-3x text-primary mb-3"></i>
-                        <h5>Document Classification</h5>
-                        <p>Automatically classify legal documents into categories like EPF, Companies Act, TDS, Contracts</p>
+            <!-- Chat Messages -->
+            <div class="chat-messages" id="chatMessages">
+                <div class="welcome-message">
+                    <div class="mb-3">
+                        <i class="fas fa-scales fa-3x" style="color: #1e40af;"></i>
+                    </div>
+                    <h4>Welcome to Legal AI Assistant</h4>
+                    <p>Ask me questions about Indian law, legal procedures, or upload documents for analysis.</p>
+                    
+                    <div class="mt-3">
+                        <h6>Quick Questions:</h6>
+                        <span class="quick-question-btn" onclick="askQuestion('How to file a complaint against SHO?')">
+                            How to file a complaint against SHO?
+                        </span>
+                        <span class="quick-question-btn" onclick="askQuestion('What is EPF contribution rate?')">
+                            What is EPF contribution rate?
+                        </span>
+                        <span class="quick-question-btn" onclick="askQuestion('Companies Act audit requirements')">
+                            Companies Act audit requirements
+                        </span>
+                        <span class="quick-question-btn" onclick="askQuestion('TDS rates for salary')">
+                            TDS rates for salary
+                        </span>
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
-                <div class="card feature-card h-100">
-                    <div class="card-body text-center">
-                        <i class="fas fa-search fa-3x text-success mb-3"></i>
-                        <h5>Information Extraction</h5>
-                        <p>Extract key legal entities, sections, clauses, dates, and monetary amounts from documents</p>
+
+            <!-- Typing Indicator -->
+            <div class="typing-indicator" id="typingIndicator">
+                <div class="message assistant">
+                    <div class="message-avatar">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="message-content">
+                        <i class="fas fa-spinner fa-spin"></i> AI is thinking...
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
-                <div class="card feature-card h-100">
-                    <div class="card-body text-center">
-                        <i class="fas fa-file-alt fa-3x text-warning mb-3"></i>
-                        <h5>Text Summarization</h5>
-                        <p>Generate concise summaries highlighting the most important legal provisions</p>
-                    </div>
-                </div>
-            </div>
-        </div>
 
-        <!-- Input Section -->
-        <div class="row">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header">
-                        <h4><i class="fas fa-edit"></i> Analyze Legal Document</h4>
-                    </div>
-                    <div class="card-body">
-                        <form id="analysisForm">
-                            <div class="mb-3">
-                                <label for="legalText" class="form-label">Enter Legal Text:</label>
-                                <textarea class="form-control" id="legalText" rows="8" 
-                                    placeholder="Paste your legal document text here for analysis..."></textarea>
-                            </div>
-                            <div class="text-center">
-                                <button type="submit" class="btn btn-primary btn-lg">
-                                    <i class="fas fa-cog"></i> Analyze Document
-                                </button>
-                                <button type="button" class="btn btn-secondary btn-lg ms-2" onclick="loadSample()">
-                                    <i class="fas fa-file-import"></i> Load Sample
-                                </button>
-                            </div>
-                        </form>
-                        
-                        <div class="loading text-center mt-3">
-                            <div class="spinner-border text-primary" role="status">
-                                <span class="visually-hidden">Processing...</span>
-                            </div>
-                            <p>Processing your legal document...</p>
-                        </div>
-                    </div>
+            <!-- Chat Input -->
+            <div class="chat-input-area">
+                <div class="input-group">
+                    <textarea 
+                        id="messageInput" 
+                        class="message-input" 
+                        placeholder="Ask your legal question..."
+                        rows="1"
+                        onkeypress="handleKeyPress(event)"
+                    ></textarea>
+                    <button class="send-button" id="sendButton" onclick="sendMessage()">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
                 </div>
-            </div>
-        </div>
-
-        <!-- Results Section -->
-        <div id="results" class="row mt-4" style="display: none;">
-            <!-- Classification Results -->
-            <div class="col-md-6">
-                <div class="result-section">
-                    <h5><i class="fas fa-tags text-primary"></i> Document Classification</h5>
-                    <div id="classification-result"></div>
-                </div>
-            </div>
-
-            <!-- Extracted Entities -->
-            <div class="col-md-6">
-                <div class="result-section">
-                    <h5><i class="fas fa-list text-success"></i> Extracted Information</h5>
-                    <div id="entities-result"></div>
-                </div>
-            </div>
-
-            <!-- Document Summary -->
-            <div class="col-12">
-                <div class="result-section">
-                    <h5><i class="fas fa-align-left text-warning"></i> Document Summary</h5>
-                    <div id="summary-result"></div>
+                
+                <div class="mt-2 text-center">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle"></i>
+                        Press Enter to send • Powered by Google Gemini
+                    </small>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container text-center">
-            <div class="row">
-                <div class="col-md-6">
-                    <h5>Legal Text Processing System</h5>
-                    <p>Advanced machine learning solution for legal document analysis</p>
-                </div>
-                <div class="col-md-6">
-                    <h5>Features</h5>
-                    <ul class="list-unstyled">
-                        <li><i class="fas fa-check"></i> Document Classification</li>
-                        <li><i class="fas fa-check"></i> Information Extraction</li>
-                        <li><i class="fas fa-check"></i> Text Summarization</li>
-                        <li><i class="fas fa-check"></i> Real-time Processing</li>
-                    </ul>
-                </div>
-            </div>
-            <hr>
-            <p>&copy; 2025 Legal Text Processing System. Built for legal document analysis.</p>
-        </div>
-    </footer>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Sample legal texts
-        const sampleTexts = [
-            `The Companies Act, 2013 requires every company to maintain proper books of account. Section 128 mandates that companies shall keep books of account at their registered office. The penalty for non-compliance under Section 129 may be fine up to rupees five lakh. Annual general meeting must be held within 6 months of the financial year ending.`,
-            
-            `The Employees' Provident Funds Act, 1952 provides for establishment of provident funds. Under Section 6, the contribution shall be ten per cent of the basic wages. The Central Government may frame schemes under Section 5. Companies with twenty or more employees must comply with this Act.`,
-            
-            `Tax shall be deducted at source at the rates specified in the Income Tax Act. The concept of TDS was introduced to collect tax from the source of income. A person liable to make payment shall deduct tax and remit to Central Government within prescribed time limits.`
-        ];
-
-        function loadSample() {
-            const randomSample = sampleTexts[Math.floor(Math.random() * sampleTexts.length)];
-            document.getElementById('legalText').value = randomSample;
-        }
-
-        document.getElementById('analysisForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const text = document.getElementById('legalText').value.trim();
-            if (!text) {
-                alert('Please enter some text to analyze');
-                return;
-            }
-
-            // Show loading
-            document.querySelector('.loading').style.display = 'block';
-            document.getElementById('results').style.display = 'none';
-
-            try {
-                const response = await fetch('/api/analyze', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ text: text })
-                });
-
-                const result = await response.json();
-
-                if (result.status === 'success') {
-                    displayResults(result);
-                } else {
-                    alert('Error: ' + result.error);
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('An error occurred while processing the text');
-            } finally {
-                document.querySelector('.loading').style.display = 'none';
-            }
+        // Auto-resize textarea
+        document.getElementById('messageInput').addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
         });
 
-        function displayResults(result) {
-            // Display classification
-            const classification = result.classification;
-            let classificationHtml = `
-                <div class="mb-3">
-                    <strong>Predicted Category:</strong> 
-                    <span class="badge bg-primary fs-6">${classification.predicted_category}</span>
-                </div>
-                <div class="mb-3">
-                    <strong>Confidence:</strong> ${(classification.confidence * 100).toFixed(1)}%
-                    <div class="confidence-bar mt-2">
-                        <div class="confidence-fill" style="width: ${classification.confidence * 100}%"></div>
-                    </div>
-                </div>
-                <div>
-                    <strong>All Scores:</strong>
-                    <div class="mt-2">
-            `;
+        function handleKeyPress(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+
+        function askQuestion(question) {
+            document.getElementById('messageInput').value = question;
+            sendMessage();
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
             
-            for (const [category, score] of Object.entries(classification.all_scores)) {
-                classificationHtml += `
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                        <span>${category}:</span>
-                        <span class="badge bg-secondary">${score}</span>
+            if (!message) return;
+            
+            // Clear input
+            input.value = '';
+            input.style.height = 'auto';
+            
+            // Add user message
+            addMessage(message, 'user');
+            
+            // Show typing indicator
+            showTypingIndicator();
+            
+            // Disable send button
+            document.getElementById('sendButton').disabled = true;
+            
+            try {
+                // Send to API
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message: message })
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    addMessage(result.response, 'assistant', result.sources);
+                } else {
+                    addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                addMessage('Sorry, I\'m having trouble connecting. Please try again.', 'assistant');
+            } finally {
+                hideTypingIndicator();
+                document.getElementById('sendButton').disabled = false;
+            }
+        }
+
+        function addMessage(content, type, sources = null) {
+            const messagesContainer = document.getElementById('chatMessages');
+            
+            // Remove welcome message if it exists
+            const welcomeMessage = messagesContainer.querySelector('.welcome-message');
+            if (welcomeMessage) {
+                welcomeMessage.remove();
+            }
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            const now = new Date();
+            const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            let sourcesHTML = '';
+            if (sources && sources.length > 0) {
+                sourcesHTML = `
+                    <div class="sources-section">
+                        <strong>Sources:</strong>
+                        ${sources.map(source => `
+                            <div class="source-item">
+                                <i class="fas fa-file-alt"></i> ${source.source || 'Legal Document'}
+                            </div>
+                        `).join('')}
                     </div>
                 `;
             }
-            classificationHtml += '</div></div>';
             
-            document.getElementById('classification-result').innerHTML = classificationHtml;
-
-            // Display entities
-            let entitiesHtml = '';
-            if (Object.keys(result.entities).length > 0) {
-                for (const [entityType, entities] of Object.entries(result.entities)) {
-                    entitiesHtml += `
-                        <div class="mb-3">
-                            <strong>${entityType.charAt(0).toUpperCase() + entityType.slice(1)}:</strong><br>
-                    `;
-                    entities.forEach(entity => {
-                        entitiesHtml += `<span class="entity-tag">${entity}</span>`;
-                    });
-                    entitiesHtml += '</div>';
-                }
-            } else {
-                entitiesHtml = '<p class="text-muted">No specific entities detected</p>';
-            }
-            document.getElementById('entities-result').innerHTML = entitiesHtml;
-
-            // Display summary
-            let summaryHtml = '';
-            if (result.summary && result.summary.length > 0) {
-                summaryHtml = '<ol>';
-                result.summary.forEach(sentence => {
-                    summaryHtml += `<li class="mb-2">${sentence}</li>`;
-                });
-                summaryHtml += '</ol>';
-            } else {
-                summaryHtml = '<p class="text-muted">No summary available</p>';
-            }
-            document.getElementById('summary-result').innerHTML = summaryHtml;
-
-            // Show results
-            document.getElementById('results').style.display = 'block';
-            document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+            messageDiv.innerHTML = `
+                <div class="message-avatar ${type}">
+                    <i class="fas fa-${type === 'user' ? 'user' : 'robot'}"></i>
+                </div>
+                <div class="message-content">
+                    <div>${formatMessage(content)}</div>
+                    <div style="font-size: 0.75rem; opacity: 0.7; margin-top: 0.5rem;">${timeString}</div>
+                    ${sourcesHTML}
+                </div>
+            `;
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
 
-        // Load sample on page load
-        window.onload = function() {
-            loadSample();
-        };
+        function formatMessage(content) {
+            // Format legal text with better styling
+            let formatted = content
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/Section (\d+[A-Za-z]*)/g, '<span class="badge bg-primary">Section $1</span>');
+            
+            return formatted;
+        }
+
+        function showTypingIndicator() {
+            document.getElementById('typingIndicator').style.display = 'block';
+            const messagesContainer = document.getElementById('chatMessages');
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function hideTypingIndicator() {
+            document.getElementById('typingIndicator').style.display = 'none';
+        }
+
+        // Check system health on load
+        async function checkHealth() {
+            try {
+                const response = await fetch('/api/health');
+                const health = await response.json();
+                console.log('System Health:', health);
+            } catch (error) {
+                console.error('Health check failed:', error);
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            checkHealth();
+            document.getElementById('messageInput').focus();
+        });
     </script>
 </body>
 </html>

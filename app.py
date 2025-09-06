@@ -1,18 +1,17 @@
 import os
-import pickle
-import json
 import re
+import requests
 from flask import Flask, render_template, request, jsonify
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.naive_bayes import MultinomialNB
-from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier
 import numpy as np
+
+# Gemini API Configuration
+GEMINI_API_KEY = "AIzaSyAtEvMhLRQRnmSHfR_ZZoUQtpLu2LQrLeE"
+GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
 
 app = Flask(__name__, 
     template_folder=os.path.abspath(os.path.join(os.path.dirname(__file__), 'templates')))
 
-# Legal Text Processor (simplified version for web deployment)
+# Legal Text Processor
 class WebLegalTextProcessor:
     def __init__(self):
         self.legal_patterns = {
@@ -48,11 +47,9 @@ class WebLegalTextProcessor:
         return extracted_info
     
     def classify_text(self, text):
-        # Enhanced classification with weighted keywords
         text_lower = text.lower()
         text_words = set(text_lower.split())
         
-        # Define keywords with weights
         keyword_weights = {
             'EPF': {
                 'provident': 2.0, 'fund': 1.5, 'employee': 1.0, 'contribution': 1.5, 'epf': 2.0,
@@ -81,20 +78,17 @@ class WebLegalTextProcessor:
             }
         }
         
-        # Calculate weighted scores
         scores = {}
         for category, keywords in keyword_weights.items():
             category_score = sum(weight for word, weight in keywords.items() if word in text_lower)
-            # Normalize by maximum possible score for the category
             max_possible = sum(keywords.values())
             scores[category] = category_score / max_possible if max_possible > 0 else 0
         
         predicted_category = max(scores.keys(), key=lambda k: scores[k])
         max_score = max(scores.values())
         
-        # Enhanced confidence calculation
-        confidence = max_score * (1 + np.log1p(len(text_words)) / 100)  # Scale with text length
-        confidence = min(max(confidence, 0.1), 0.99)  # Bound between 0.1 and 0.99
+        confidence = max_score * (1 + np.log1p(len(text_words)) / 100)
+        confidence = min(max(confidence, 0.1), 0.99)
         
         return {
             'predicted_category': predicted_category,
@@ -118,12 +112,10 @@ def analyze_text():
         if not text.strip():
             return jsonify({'error': 'No text provided'}), 400
         
-        # Analyze the text
         classification = processor.classify_text(text)
         entities = processor.extract_information(text)
         preprocessed = processor.preprocess_text(text)
         
-        # Create simple summary (first 2 sentences)
         sentences = [s.strip() for s in re.split(r'[.!?]+', text) if len(s.strip()) > 10]
         summary = sentences[:2]
         
@@ -144,6 +136,41 @@ def analyze_text():
 def health_check():
     return jsonify({'status': 'healthy', 'model': 'Legal Text Processor v1.0'})
 
+@app.route('/api/gemini', methods=['POST'])
+def query_gemini():
+    try:
+        data = request.get_json()
+        user_text = data.get('text', '')
+        
+        if not user_text:
+            return jsonify({'error': 'No text provided'}), 400
+            
+        headers = {
+            'Content-Type': 'application/json',
+            'X-goog-api-key': GEMINI_API_KEY
+        }
+        
+        payload = {
+            'contents': [{
+                'parts': [{
+                    'text': user_text
+                }]
+            }]
+        }
+        
+        response = requests.post(GEMINI_API_URL, headers=headers, json=payload)
+        
+        if response.status_code == 200:
+            return jsonify(response.json())
+        else:
+            return jsonify({
+                'error': f'Gemini API error: {response.status_code}',
+                'details': response.text
+            }), response.status_code
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(debug=False, host='0.0.0.0', port=port)
+    app.run(debug=True, host='0.0.0.0', port=port)
